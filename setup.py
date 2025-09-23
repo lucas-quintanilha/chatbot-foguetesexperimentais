@@ -25,5 +25,5 @@ setup(
     version="2.0",
     description="Chatbot NLP para Foguetes Experimentais - UFPE",
     options={"build_exe": build_exe_options},
-    executables=[Executable("chatbot_nlp.py", base=base)]
+    executables=[Executable("chatbot_foguetes.py", base=base)]
 )
