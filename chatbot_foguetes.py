@@ -7,26 +7,23 @@ import os
 
 try:
     import numpy as np
-    TEM_NUMPY = True
+    HAS_NUMPY = True
 except ImportError:
-    TEM_NUMPY = False
-    
-    class VetorSimples:
-        def __init__(self, dados):
-            self.dados = dados
-            
-        def produto_escalar(self, outro):
-            return sum(a * b for a, b in zip(self.dados, outro.dados))
-            
-        def norma(self):
-            return sum(x * x for x in self.dados) ** 0.5
+    HAS_NUMPY = False
+    class SimpleArray:
+        def __init__(self, data):
+            self.data = data
+        def dot(self, other):
+            return sum(a*b for a,b in zip(self.data, other.data))
+        def norm(self):
+            return sum(x*x for x in self.data) ** 0.5
 
-class ChatbotFoguetes:
+class NLPChatbot:
     def __init__(self):
-        self.conhecimento = self.carregar_conhecimento()
-        self.palavras_chave = self.extrair_palavras_chave()
+        self.base_conhecimento = self.carregar_base_conhecimento()
+        self.vocabulario = self.construir_vocabulario()
         
-    def carregar_conhecimento(self):
+    def carregar_base_conhecimento(self):
         return [
             {
                 'perguntas': [
@@ -36,11 +33,11 @@ class ChatbotFoguetes:
                 ],
                 'resposta': '''A COBRUF (Competição Brasileira Universitária de Foguetes) é uma competição nacional onde equipes universitárias projetam, constroem e lançam foguetes experimentais. 
 
-Detalhes importantes:
+Principais características:
 - Organizada pela UNIFOA
 - Foco em foguetes de propulsão sólida
-- Várias categorias por altitude e complexidade
-- Avaliação leva em conta projeto, relatórios e desempenho no lançamento
+- Categorias por altitude e complexidade
+- Avaliação de projeto, relatórios e desempenho no lançamento
 
 É uma das principais competições do Brasil para estudantes de engenharia.'''
             },
@@ -53,176 +50,322 @@ Detalhes importantes:
                 'resposta': '''Principais competições no Brasil:
 
 1. COBRUF - Competição Brasileira Universitária de Foguetes
-2. LAAC - Latin American Aerospace Challenge  
+2. LAAC - Latin American Aerospace Challenge
 3. Competição Regional Nordeste
 4. Festival de Minifoguetes
 5. Olimpíada Brasileira de Astronomia (categoria foguetes)
 
-Tem também competições internacionais como Spaceport America Cup e IREC.'''
+Internacionalmente existem também a Spaceport America Cup e a IREC.'''
             },
             {
-                'perguntas': ['como começar', 'iniciar projeto', 'primeiros passos', 'dicas para iniciantes'],
-                'resposta': '''Dicas para começar:
+                'perguntas': [
+                    'como funciona o motor', 'propulsão do foguete', 'sistema de propulsão',
+                    'combustível para foguetes', 'motor foguete experimental',
+                    'como o motor funciona', 'propulsão sólida', 'químico do motor'
+                ],
+                'resposta': '''Os foguetes experimentais usam principalmente propulsão sólida:
 
-1. **Estude a teoria**: Aerodinâmica, propulsão, estabilidade
-2. **Use software**: Aprenda OpenRocket
-3. **Comece simples**: Foguete de baixa altitude primeiro
+Combustíveis comuns:
+- KNSB (Nitrato de Potássio + Sorbitol)
+- KNDX (Nitrato de Potássio + Dextrose)
+- Outros compostos químicos específicos
+
+Funcionamento:
+1. Ignição do propelente
+2. Combustão gera gases quentes
+3. Gases expandem e saem pelo bocal
+4. Reação empurra o foguete para cima
+
+A queima é auto-sustentada até acabar o combustível.'''
+            },
+            {
+                'perguntas': [
+                    'materiais para construir', 'estrutura do foguete', 'fuselagem materiais',
+                    'que material usar', 'construção do foguete', 'materiais leves',
+                    'nariz do foguete material', 'aletas material'
+                ],
+                'resposta': '''Materiais recomendados para foguetes experimentais:
+
+Estrutura principal:
+- Fibra de vidro (mais comum)
+- Fibra de carbono (alto desempenho)
+- PVC (para protótipos e testes)
+- Alumínio (componentes estruturais)
+
+Aletas:
+- Madeira (balsa ou compensado)
+- Acrílico
+- Fibra de vidro
+
+Nariz:
+- Plástico usinado
+- Madeira torneada
+- Impressão 3D'''
+            },
+            {
+                'perguntas': [
+                    'sistema de recuperação', 'paraquedas como funciona', 'recuperar foguete',
+                    'ejeção do paraquedas', 'como o paraquedas abre', 'sistema de ejeção',
+                    'recuperação após lançamento'
+                ],
+                'resposta': '''Sistema de recuperação típico:
+
+1. **Ativação**: No apogeu (ponto mais alto) ou por timer
+2. **Ejeção**: Carga pirotécnica ou mola empurra o paraquedas
+3. **Abertura**: Paraquedas se infla e reduz a velocidade
+4. **Queda**: Foguete desce lentamente para recuperação
+
+Componentes:
+- Paraquedas principal e de reserva
+- Sistema de ejeção (black powder, CO2)
+- Altímetro eletrônico
+- Swivel para evitar torção'''
+            },
+            {
+                'perguntas': [
+                    'como calcular estabilidade', 'estabilidade do foguete', 'centro de gravidade',
+                    'centro de pressão', 'como tornar estável', 'calcular cp cg',
+                    'aletas tamanho', 'estabilidade aerodinâmica'
+                ],
+                'resposta': '''Cálculo de estabilidade:
+
+**Regra fundamental**: CG (Centro de Gravidade) deve estar à frente do CP (Centro de Pressão)
+
+Métodos:
+1. **Regra dos calibres**: CP deve estar 1-2 calibres atrás do CG
+2. **Software**: OpenRocket, Rocksim calculam automaticamente
+3. **Teste de giro**: Verificação prática antes do lançamento
+
+Fórmula básica: Margem de estabilidade = (Distância CG-CP) / Diâmetro do foguete
+Ideal: 1.5 a 2.0 calibres'''
+            },
+            {
+                'perguntas': [
+                    'software para projeto', 'openrocket como usar', 'simular foguete',
+                    'ferramentas de projeto', 'programas para foguetes',
+                    'simulação trajetória', 'software simulação'
+                ],
+                'resposta': '''Softwares mais usados:
+
+1. **OpenRocket** (Gratuito) - Completo para projeto e simulação
+2. **Rocksim** (Pago) - Profissional, muito preciso
+3. **RASAero** - Foco em aerodinâmica
+4. **Excel** - Cálculos personalizados
+
+OpenRocket é o mais recomendado para iniciantes:
+- Interface amigável
+- Simula trajetória, altitude, velocidade
+- Calcula estabilidade automaticamente
+- Biblioteca de motores e materiais'''
+            },
+            {
+                'perguntas': [
+                    'normas de segurança', 'procedimentos seguros', 'segurança lançamento',
+                    'epi para foguetes', 'precauções segurança', 'protocolos segurança',
+                    'como lançar com segurança'
+                ],
+                'resposta': '''Normas de segurança essenciais:
+
+**EPI Obrigatório**:
+- Óculos de proteção
+- Capacete
+- Roupas não inflamáveis
+
+**Procedimentos**:
+- Área de lançamento isolada
+- Distância mínima de segurança
+- Extintor disponível
+- Checklist pré-lançamento
+- Comunicação clara entre equipe
+
+**Manuseio propelentes**:
+- Em área ventilada
+- Com equipamento adequado
+- Seguindo protocolos específicos'''
+            },
+            {
+                'perguntas': [
+                    'equipe ufpe', 'foguetes ufpe', 'projeto ufpe',
+                    'ufpe competições', 'engenharia mecânica ufpe foguetes',
+                    'grupo foguetes ufpe', 'ufpe cobruf'
+                ],
+                'resposta': '''A UFPE tem tradição em foguetes experimentais!
+
+**Como participar**:
+- Contate o departamento de Engenharia Mecânica
+- Procure por grupos de extensão
+- Participe de disciplinas relacionadas a aeroespacial
+- Entre em contato com o Centro de Tecnologia
+
+**Histórico**:
+A UFPE já participou de várias edições da COBRUF com bons resultados.'''
+            },
+            {
+                'perguntas': [
+                    'como começar', 'iniciar projeto', 'primeiros passos',
+                    'dicas para iniciantes', 'começar foguete experimental',
+                    'projeto primeiro foguete', 'iniciante dicas'
+                ],
+                'resposta': '''Passos para iniciar:
+
+1. **Estudo teórico**: Aerodinâmica, propulsão, estabilidade
+2. **Software**: Aprenda OpenRocket
+3. **Projeto simples**: Comece com foguete de baixa altitude
 4. **Materiais básicos**: PVC, aletas de madeira
-5. **Motor comercial**: Use motores prontos no início
-6. **Participe**: Eventos locais são ótimos para aprender
+5. **Motor comercial**: Use motores prontos inicialmente
+6. **Competições**: Participe de eventos locais
 
-Recomendo começar com projetos de 1-2kg até 500m de altitude.'''
+Recomendo começar com projetos de 1-2kg e altitude até 500m.'''
             }
         ]
     
-    def extrair_palavras_chave(self):
-        palavras_importantes = set()
-        
-        for topico in self.conhecimento:
-            for pergunta in topico['perguntas']:
-                palavras = self.limpar_texto(pergunta)
-                palavras_importantes.update(palavras)
-                
-        return list(palavras_importantes)
+    def construir_vocabulario(self):
+        vocabulario = set()
+        for item in self.base_conhecimento:
+            for pergunta in item['perguntas']:
+                palavras = self.preprocessar_texto(pergunta)
+                vocabulario.update(palavras)
+        return list(vocabulario)
     
-    def limpar_texto(self, texto):
-        texto = texto.lower().strip()
+    def preprocessar_texto(self, texto):
+        texto = texto.lower()
         texto = re.sub(r'[^\w\s]', '', texto)
         palavras = texto.split()
         
-        palavras_vazias = {
-            'o', 'a', 'os', 'as', 'um', 'uma', 'de', 'do', 'da', 'em', 'no', 'na',
-            'por', 'para', 'com', 'sem', 'que', 'como', 'é', 'são', 'meu', 'minha'
-        }
+        stopwords = {'o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 
+                    'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 
+                    'nos', 'nas', 'por', 'para', 'com', 'sem', 'sob',
+                    'sobre', 'entre', 'que', 'como', 'é', 'são', 'seu',
+                    'sua', 'seus', 'suas', 'meu', 'minha', 'meus', 'minhas'}
         
-        return [palavra for palavra in palavras 
-                if palavra not in palavras_vazias and len(palavra) > 2]
+        return [palavra for palavra in palavras if palavra not in stopwords and len(palavra) > 2]
     
-    def analisar_pergunta(self, texto_pergunta):
-        palavras = self.limpar_texto(texto_pergunta)
+    def calcular_tfidf(self, texto):
+        palavras = self.preprocessar_texto(texto)
         if not palavras:
-            return self.vetor_vazio()
+            return self.criar_vetor_zeros()
             
-        frequencias = {}
+        tf = {}
         for palavra in palavras:
-            frequencias[palavra] = frequencias.get(palavra, 0) + 1
+            tf[palavra] = tf.get(palavra, 0) + 1
         
-        if TEM_NUMPY:
-            vetor = np.zeros(len(self.palavras_chave))
-            for i, palavra in enumerate(self.palavras_chave):
-                if palavra in frequencias:
-                    vetor[i] = frequencias[palavra] / len(palavras)
-            return vetor
+        if HAS_NUMPY:
+            vetor_tf = np.zeros(len(self.vocabulario))
+            for i, palavra in enumerate(self.vocabulario):
+                if palavra in tf:
+                    vetor_tf[i] = tf[palavra] / len(palavras)
+            return vetor_tf
         else:
-            vetor = [0.0] * len(self.palavras_chave)
-            for i, palavra in enumerate(self.palavras_chave):
-                if palavra in frequencias:
-                    vetor[i] = frequencias[palavra] / len(palavras)
-            return VetorSimples(vetor)
+            vetor_tf = [0.0] * len(self.vocabulario)
+            for i, palavra in enumerate(self.vocabulario):
+                if palavra in tf:
+                    vetor_tf[i] = tf[palavra] / len(palavras)
+            return SimpleArray(vetor_tf)
     
-    def vetor_vazio(self):
-        if TEM_NUMPY:
-            return np.zeros(len(self.palavras_chave))
+    def criar_vetor_zeros(self):
+        if HAS_NUMPY:
+            return np.zeros(len(self.vocabulario))
         else:
-            return VetorSimples([0.0] * len(self.palavras_chave))
+            return SimpleArray([0.0] * len(self.vocabulario))
     
-    def calcular_similaridade(self, vetor1, vetor2):
-        if TEM_NUMPY:
-            produto = np.dot(vetor1, vetor2)
-            norma1 = np.linalg.norm(vetor1)
-            norma2 = np.linalg.norm(vetor2)
+    def similaridade_cosseno(self, vetor1, vetor2):
+        if HAS_NUMPY:
+            dot_product = np.dot(vetor1, vetor2)
+            norm1 = np.linalg.norm(vetor1)
+            norm2 = np.linalg.norm(vetor2)
         else:
-            produto = vetor1.produto_escalar(vetor2)
-            norma1 = vetor1.norma()
-            norma2 = vetor2.norma()
+            dot_product = vetor1.dot(vetor2)
+            norm1 = vetor1.norm()
+            norm2 = vetor2.norm()
         
-        if norma1 == 0 or norma2 == 0:
+        if norm1 == 0 or norm2 == 0:
             return 0
-            
-        return produto / (norma1 * norma2)
+        return dot_product / (norm1 * norm2)
     
-    def encontrar_resposta(self, pergunta):
-        pergunta = pergunta.lower()
+    def processar_pergunta_nlp(self, pergunta):
+        pergunta_lower = pergunta.lower()
         
-        for topico in self.conhecimento:
-            for pergunta_base in topico['perguntas']:
-                if pergunta_base in pergunta:
-                    return topico['resposta']
+        for item in self.base_conhecimento:
+            for pergunta_base in item['perguntas']:
+                if pergunta_base in pergunta_lower:
+                    return item['resposta']
         
-        vetor_pergunta = self.analisar_pergunta(pergunta)
-        melhor_score = 0
+        vetor_pergunta = self.calcular_tfidf(pergunta)
+        
+        melhor_similaridade = 0
         melhor_resposta = None
         
-        for topico in self.conhecimento:
-            for pergunta_base in topico['perguntas']:
-                vetor_base = self.analisar_pergunta(pergunta_base)
-                score = self.calcular_similaridade(vetor_pergunta, vetor_base)
+        for item in self.base_conhecimento:
+            for pergunta_base in item['perguntas']:
+                vetor_base = self.calcular_tfidf(pergunta_base)
+                similaridade = self.similaridade_cosseno(vetor_pergunta, vetor_base)
                 
-                if score > melhor_score:
-                    melhor_score = score
-                    melhor_resposta = topico['resposta']
+                if similaridade > melhor_similaridade:
+                    melhor_similaridade = similaridade
+                    melhor_resposta = item['resposta']
         
-        if melhor_score > 0.2:
+        if melhor_similaridade > 0.2:
             return melhor_resposta
         else:
-            return self.resposta_generica(pergunta)
+            return self.gerar_resposta_padrao(pergunta)
     
-    def resposta_generica(self, pergunta):
+    def gerar_resposta_padrao(self, pergunta):
         pergunta = pergunta.lower()
         
-        if any(palavra in pergunta for palavra in ['oi', 'olá', 'hello', 'bom dia', 'boa tarde']):
-            return "E aí! Sou especialista em foguetes experimentais da UFPE. Posso ajudar com projetos, competições, cálculos e segurança. Qual sua dúvida?"
+        if any(palavra in pergunta for palavra in ['oi', 'olá', 'hello', 'bom dia', 'boa tarde', 'boa noite']):
+            return "Olá! Sou especialista em foguetes experimentais da UFPE. Posso ajudar com projetos, competições, cálculos e segurança. Como posso ajudá-lo?"
         
         if any(palavra in pergunta for palavra in ['obrigado', 'valeu', 'agradeço', 'thanks']):
-            return "Tamo junto! Boa sorte com seu projeto de foguetes! 🚀"
+            return "De nada! Fico feliz em ajudar. Boa sorte com seu projeto de foguetes! 🚀"
         
         if any(palavra in pergunta for palavra in ['tchau', 'bye', 'sair', 'até logo']):
-            return "Falou! Se tiver mais dúvidas sobre foguetes, é só chamar!"
+            return "Até logo! Se tiver mais dúvidas sobre foguetes experimentais, estarei aqui!"
         
-        opcoes = [
-            "Interessante! Meu foco é foguetes experimentais universitários. Pode perguntar sobre COBRUF, projeto, motores ou segurança?",
-            "Essa é específica. Posso ajudar mais com competições, cálculo de estabilidade, materiais ou sistemas de recuperação.",
-            "Não manjo muito disso. Posso auxiliar com projeto de foguetes, competições como COBRUF, ou questões técnicas básicas.",
-            "Sou mais focado em foguetes experimentais pra competições universitárias. Que tal perguntar sobre COBRUF, OpenRocket, ou projeto?",
+        respostas_padrao = [
+            "Interessante sua pergunta! Minha especialidade é foguetes experimentais universitários. Pode me perguntar sobre COBRUF, projeto, motores ou segurança?",
+            "Essa é uma questão específica. Posso ajudar melhor com tópicos como competições, cálculo de estabilidade, materiais ou sistemas de recuperação de foguetes.",
+            "Não tenho informações detalhadas sobre isso no momento. Posso auxiliar com: projeto de foguetes, competições como COBRUF, ou questões técnicas básicas.",
+            "Sou focado em foguetes experimentais para competições universitárias. Que tal perguntar sobre COBRUF, OpenRocket, ou projeto de foguetes?",
+            "Sua pergunta é interessante! Posso ajudar com: competições universitárias, projeto técnico de foguetes, ou questões sobre motores e segurança."
         ]
         
-        return random.choice(opcoes)
+        return random.choice(respostas_padrao)
 
-class InterfaceChat:
-    def __init__(self, janela):
-        self.janela = janela
-        self.janela.title("Chatbot Foguetes UFPE")
-        self.janela.geometry("700x600")
-        self.janela.configure(bg='#1a1a2e')
+class InterfaceChatbot:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Chatbot NLP - Foguetes Experimentais UFPE")
+        self.root.geometry("700x600")
+        self.root.configure(bg='#1a1a2e')
         
-        self.janela.eval('tk::PlaceWindow . center')
+        self.root.eval('tk::PlaceWindow . center')
         
-        self.chatbot = ChatbotFoguetes()
+        self.chatbot = NLPChatbot()
         self.criar_interface()
         
     def criar_interface(self):
-        cabecalho = tk.Frame(self.janela, bg='#16213e', height=80)
-        cabecalho.pack(fill='x', padx=10, pady=5)
-        cabecalho.pack_propagate(False)
+        header_frame = tk.Frame(self.root, bg='#16213e', height=80)
+        header_frame.pack(fill='x', padx=10, pady=5)
+        header_frame.pack_propagate(False)
         
-        titulo = tk.Label(cabecalho, 
-                         text="🤖 Chatbot - Foguetes Experimentais UFPE",
+        titulo = tk.Label(header_frame, 
+                         text="🤖 Chatbot Inteligente - Foguetes Experimentais UFPE",
                          font=('Arial', 14, 'bold'),
                          fg='white',
                          bg='#16213e')
         titulo.pack(expand=True)
         
-        subtitulo = tk.Label(cabecalho,
+        subtitulo = tk.Label(header_frame,
                            text="Engenharia Mecânica",
                            font=('Arial', 10),
                            fg='#e94560',
                            bg='#16213e')
         subtitulo.pack()
         
-        area_conversa_frame = tk.Frame(self.janela, bg='#1a1a2e')
-        area_conversa_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        chat_frame = tk.Frame(self.root, bg='#1a1a2e')
+        chat_frame.pack(fill='both', expand=True, padx=10, pady=5)
         
-        self.historico = scrolledtext.ScrolledText(area_conversa_frame,
+        self.area_chat = scrolledtext.ScrolledText(chat_frame,
                                                   wrap=tk.WORD,
                                                   width=80,
                                                   height=20,
@@ -230,10 +373,10 @@ class InterfaceChat:
                                                   bg='#0f3460',
                                                   fg='white',
                                                   insertbackground='white')
-        self.historico.pack(fill='both', expand=True)
-        self.historico.config(state='disabled')
+        self.area_chat.pack(fill='both', expand=True)
+        self.area_chat.config(state='disabled')
         
-        entrada_frame = tk.Frame(self.janela, bg='#1a1a2e')
+        entrada_frame = tk.Frame(self.root, bg='#1a1a2e')
         entrada_frame.pack(fill='x', padx=10, pady=10)
         
         lbl_instrucao = tk.Label(entrada_frame,
@@ -243,103 +386,103 @@ class InterfaceChat:
                                 bg='#1a1a2e')
         lbl_instrucao.pack(anchor='w')
         
-        entrada_interna = tk.Frame(entrada_frame, bg='#1a1a2e')
-        entrada_interna.pack(fill='x', pady=5)
+        entrada_subframe = tk.Frame(entrada_frame, bg='#1a1a2e')
+        entrada_subframe.pack(fill='x', pady=5)
         
-        self.campo_pergunta = tk.Entry(entrada_interna,
-                                      font=('Arial', 12),
-                                      width=50,
-                                      bg='#0f3460',
-                                      fg='white',
-                                      insertbackground='white')
-        self.campo_pergunta.pack(side='left', fill='x', expand=True, padx=(0, 10))
-        self.campo_pergunta.bind('<Return>', lambda e: self.enviar())
+        self.entrada_pergunta = tk.Entry(entrada_subframe,
+                                        font=('Arial', 12),
+                                        width=50,
+                                        bg='#0f3460',
+                                        fg='white',
+                                        insertbackground='white')
+        self.entrada_pergunta.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        self.entrada_pergunta.bind('<Return>', lambda e: self.enviar_pergunta())
         
-        btn_enviar = tk.Button(entrada_interna,
+        btn_enviar = tk.Button(entrada_subframe,
                               text="🚀 Enviar",
                               font=('Arial', 10, 'bold'),
                               bg='#e94560',
                               fg='white',
-                              command=self.enviar,
+                              command=self.enviar_pergunta,
                               width=10)
         btn_enviar.pack(side='right')
         
-        exemplos_frame = tk.Frame(self.janela, bg='#1a1a2e')
+        exemplos_frame = tk.Frame(self.root, bg='#1a1a2e')
         exemplos_frame.pack(fill='x', padx=10, pady=5)
         
         lbl_exemplos = tk.Label(exemplos_frame,
-                               text="💡 Exemplos: 'Como calcular estabilidade?', 'Que materiais usar?', 'Me fala da COBRUF'",
+                               text="💡 Exemplos: 'Como calcular a estabilidade do meu foguete?', 'Que materiais usar na estrutura?', 'Me explique sobre a COBRUF'",
                                font=('Arial', 9),
                                fg='#bdc3c7',
                                bg='#1a1a2e',
                                wraplength=650)
         lbl_exemplos.pack()
         
-        self.mostrar_mensagem("Sistema", self.mensagem_inicial())
+        self.adicionar_mensagem("Sistema", self.mensagem_boas_vindas())
     
-    def mensagem_inicial(self):
-        return '''E aí, bem-vindo ao Chatbot de Foguetes Experimentais! 🚀
+    def mensagem_boas_vindas(self):
+        return '''Bem-vindo ao Chatbot Inteligente de Foguetes Experimentais! 🚀
 
-Sou especializado em ajudar estudantes da UFPE com projetos de foguetes pra competições como a COBRUF.
+Sou especializado em ajudar estudantes da UFPE com projetos de foguetes para competições como COBRUF.
 
 Posso ajudar com:
 • 📊 Cálculos e projetos técnicos
-• 🏆 Competições universitárias  
+• 🏆 Competições universitárias
 • 🔧 Componentes e materiais
 • ⚠️ Normas de segurança
 • 💻 Softwares de simulação
 
-Manda sua pergunta que eu te ajudo!'''
+Digite sua pergunta em linguagem natural - eu entenderei!'''
     
-    def mostrar_mensagem(self, quem, mensagem):
-        self.historico.config(state='normal')
+    def adicionar_mensagem(self, remetente, mensagem):
+        self.area_chat.config(state='normal')
         
-        if quem == "Sistema":
+        if remetente == "Sistema":
             cor = "#e94560"
-            icone = "🤖 "
-        elif quem == "Você":
-            cor = "#3498db" 
-            icone = "👤 "
+            prefixo = "🤖 "
+        elif remetente == "Você":
+            cor = "#3498db"
+            prefixo = "👤 "
         else:
             cor = "#2ecc71"
-            icone = "🤖 "
+            prefixo = "🤖 "
         
-        self.historico.insert(tk.END, f"{icone}{quem}:\n", f"cabecalho_{quem}")
-        self.historico.tag_configure(f"cabecalho_{quem}", foreground=cor, font=('Arial', 10, 'bold'))
+        self.area_chat.insert(tk.END, f"{prefixo}{remetente}:\n", f"header_{remetente}")
+        self.area_chat.tag_configure(f"header_{remetente}", foreground=cor, font=('Arial', 10, 'bold'))
         
-        self.historico.insert(tk.END, f"{mensagem}\n\n")
+        self.area_chat.insert(tk.END, f"{mensagem}\n\n")
         
-        self.historico.config(state='disabled')
-        self.historico.see(tk.END)
+        self.area_chat.config(state='disabled')
+        self.area_chat.see(tk.END)
     
-    def enviar(self):
-        pergunta = self.campo_pergunta.get().strip()
+    def enviar_pergunta(self):
+        pergunta = self.entrada_pergunta.get().strip()
         
         if not pergunta:
-            messagebox.showwarning("Aviso", "Digite alguma coisa aí!")
+            messagebox.showwarning("Aviso", "Por favor, digite uma pergunta.")
             return
         
-        self.mostrar_mensagem("Você", pergunta)
-        self.campo_pergunta.delete(0, tk.END)
+        self.adicionar_mensagem("Você", pergunta)
+        self.entrada_pergunta.delete(0, tk.END)
         
-        self.janela.after(100, self.processar, pergunta)
+        self.root.after(100, self.processar_resposta, pergunta)
     
-    def processar(self, pergunta):
+    def processar_resposta(self, pergunta):
         try:
-            resposta = self.chatbot.encontrar_resposta(pergunta)
-            self.mostrar_mensagem("Chatbot", resposta)
-        except Exception as erro:
-            mensagem_erro = f"Opa, deu um erro. Tenta de novo!\nErro: {str(erro)}"
-            self.mostrar_mensagem("Sistema", mensagem_erro)
+            resposta = self.chatbot.processar_pergunta_nlp(pergunta)
+            self.adicionar_mensagem("Chatbot", resposta)
+        except Exception as e:
+            error_msg = f"Desculpe, ocorreu um erro. Tente reformular sua pergunta.\nErro: {str(e)}"
+            self.adicionar_mensagem("Sistema", error_msg)
 
 def main():
     try:
-        janela = tk.Tk()
-        app = InterfaceChat(janela)
-        janela.mainloop()
+        root = tk.Tk()
+        app = InterfaceChatbot(root)
+        root.mainloop()
     except Exception as e:
-        print(f"Erro ao iniciar: {e}")
-        input("Pressione Enter pra sair...")
+        print(f"Erro ao iniciar aplicação: {e}")
+        input("Pressione Enter para sair...")
 
 if __name__ == "__main__":
     main()
