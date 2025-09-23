@@ -1,10 +1,22 @@
 import tkinter as tk
 from tkinter import scrolledtext, messagebox
 import re
-import numpy as np
-from collections import Counter
-import math
 import random
+import sys
+import os
+
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    class SimpleArray:
+        def __init__(self, data):
+            self.data = data
+        def dot(self, other):
+            return sum(a*b for a,b in zip(self.data, other.data))
+        def norm(self):
+            return sum(x*x for x in self.data) ** 0.5
 
 class NLPChatbot:
     def __init__(self):
@@ -230,27 +242,54 @@ Recomendo começar com projetos de 1-2kg e altitude até 500m.'''
     
     def calcular_tfidf(self, texto):
         palavras = self.preprocessar_texto(texto)
-        tf = Counter(palavras)
+        if not palavras:
+            return self.criar_vetor_zeros()
+            
+        tf = {}
+        for palavra in palavras:
+            tf[palavra] = tf.get(palavra, 0) + 1
         
-        vetor_tf = np.zeros(len(self.vocabulario))
-        for i, palavra in enumerate(self.vocabulario):
-            if palavra in tf:
-                vetor_tf[i] = tf[palavra] / len(palavras)
-        
-        vetor_idf = np.ones(len(self.vocabulario))
-        
-        return vetor_tf * vetor_idf
+        if HAS_NUMPY:
+            vetor_tf = np.zeros(len(self.vocabulario))
+            for i, palavra in enumerate(self.vocabulario):
+                if palavra in tf:
+                    vetor_tf[i] = tf[palavra] / len(palavras)
+            return vetor_tf
+        else:
+            vetor_tf = [0.0] * len(self.vocabulario)
+            for i, palavra in enumerate(self.vocabulario):
+                if palavra in tf:
+                    vetor_tf[i] = tf[palavra] / len(palavras)
+            return SimpleArray(vetor_tf)
+    
+    def criar_vetor_zeros(self):
+        if HAS_NUMPY:
+            return np.zeros(len(self.vocabulario))
+        else:
+            return SimpleArray([0.0] * len(self.vocabulario))
     
     def similaridade_cosseno(self, vetor1, vetor2):
-        dot_product = np.dot(vetor1, vetor2)
-        norm1 = np.linalg.norm(vetor1)
-        norm2 = np.linalg.norm(vetor2)
+        if HAS_NUMPY:
+            dot_product = np.dot(vetor1, vetor2)
+            norm1 = np.linalg.norm(vetor1)
+            norm2 = np.linalg.norm(vetor2)
+        else:
+            dot_product = vetor1.dot(vetor2)
+            norm1 = vetor1.norm()
+            norm2 = vetor2.norm()
         
         if norm1 == 0 or norm2 == 0:
             return 0
         return dot_product / (norm1 * norm2)
     
     def processar_pergunta_nlp(self, pergunta):
+        pergunta_lower = pergunta.lower()
+        
+        for item in self.base_conhecimento:
+            for pergunta_base in item['perguntas']:
+                if pergunta_base in pergunta_lower:
+                    return item['resposta']
+        
         vetor_pergunta = self.calcular_tfidf(pergunta)
         
         melhor_similaridade = 0
@@ -265,7 +304,7 @@ Recomendo começar com projetos de 1-2kg e altitude até 500m.'''
                     melhor_similaridade = similaridade
                     melhor_resposta = item['resposta']
         
-        if melhor_similaridade > 0.3:
+        if melhor_similaridade > 0.2:
             return melhor_resposta
         else:
             return self.gerar_resposta_padrao(pergunta)
@@ -286,7 +325,8 @@ Recomendo começar com projetos de 1-2kg e altitude até 500m.'''
             "Interessante sua pergunta! Minha especialidade é foguetes experimentais universitários. Pode me perguntar sobre COBRUF, projeto, motores ou segurança?",
             "Essa é uma questão específica. Posso ajudar melhor com tópicos como competições, cálculo de estabilidade, materiais ou sistemas de recuperação de foguetes.",
             "Não tenho informações detalhadas sobre isso no momento. Posso auxiliar com: projeto de foguetes, competições como COBRUF, ou questões técnicas básicas.",
-            "Sou focado em foguetes experimentais para competições universitárias. Que tal perguntar sobre COBRUF, OpenRocket, ou projeto de foguetes?"
+            "Sou focado em foguetes experimentais para competições universitárias. Que tal perguntar sobre COBRUF, OpenRocket, ou projeto de foguetes?",
+            "Sua pergunta é interessante! Posso ajudar com: competições universitárias, projeto técnico de foguetes, ou questões sobre motores e segurança."
         ]
         
         return random.choice(respostas_padrao)
@@ -297,6 +337,8 @@ class InterfaceChatbot:
         self.root.title("Chatbot NLP - Foguetes Experimentais UFPE")
         self.root.geometry("700x600")
         self.root.configure(bg='#1a1a2e')
+        
+        self.root.eval('tk::PlaceWindow . center')
         
         self.chatbot = NLPChatbot()
         self.criar_interface()
@@ -430,12 +472,17 @@ Digite sua pergunta em linguagem natural - eu entenderei!'''
             resposta = self.chatbot.processar_pergunta_nlp(pergunta)
             self.adicionar_mensagem("Chatbot", resposta)
         except Exception as e:
-            self.adicionar_mensagem("Sistema", f"Erro no processamento: {str(e)}")
+            error_msg = f"Desculpe, ocorreu um erro. Tente reformular sua pergunta.\nErro: {str(e)}"
+            self.adicionar_mensagem("Sistema", error_msg)
 
 def main():
-    root = tk.Tk()
-    app = InterfaceChatbot(root)
-    root.mainloop()
+    try:
+        root = tk.Tk()
+        app = InterfaceChatbot(root)
+        root.mainloop()
+    except Exception as e:
+        print(f"Erro ao iniciar aplicação: {e}")
+        input("Pressione Enter para sair...")
 
 if __name__ == "__main__":
     main()
